@@ -1,6 +1,8 @@
 import javax.imageio.ImageIO;
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.Color;
 import java.awt.Font;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -21,6 +23,12 @@ public class FormularioEstagiario extends JFrame {
     private JButton btnGerarPlanilha;
 
     public FormularioEstagiario() {
+        try {
+            UIManager.setLookAndFeel("com.formdev.flatlaf.FlatLightLaf");
+        } catch (Exception e) {
+            System.err.println("Não foi possível aplicar o tema moderno. :(");
+        }
+
         setTitle("Gerar Folha de Frequência");
         setSize(500, 500);
         setLocationRelativeTo(null);
@@ -42,6 +50,7 @@ public class FormularioEstagiario extends JFrame {
         // Painel principal vertical
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
 
         // Painel da logo
         JLabel imagemLabel = new JLabel();
@@ -53,39 +62,65 @@ public class FormularioEstagiario extends JFrame {
             e.printStackTrace();
         }
 
-        mainPanel.add(Box.createVerticalStrut(10));
+        mainPanel.add(Box.createVerticalStrut(20));
         mainPanel.add(imagemLabel);
 
         // Painel de campos
-        JPanel painelCampos = new JPanel(new GridLayout(8, 2, 5, 5));
+        JPanel painelCampos = new JPanel(new GridBagLayout());
+        painelCampos.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 10, 5, 10);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+
         campoNome = new JTextField();
         campoCodigo = new JTextField();
         comboSetor = new JComboBox<>(new String[] { "CIT - Service Desk", "CIT - Desenvolvimento", "LIAPE" });
         comboPeriodo = new JComboBox<>(new String[] {"Manhã", "Tarde", "Noite"});
-        comboPagamento = new JComboBox<>(new String[] {"100% Bolsa", "R$ 1.400,00"});
+        comboPagamento = new JComboBox<>(new String[] {"R$ 1.400,00", "100% Bolsa"});
         btnGerarPlanilha = new JButton("Gerar Planilha");
 
-        painelCampos.add(new JLabel("Nome:"));
-        painelCampos.add(campoNome);
-        painelCampos.add(new JLabel("Código:"));
-        painelCampos.add(campoCodigo);
-        painelCampos.add(new JLabel("Setor:"));
-        painelCampos.add(comboSetor);
-        painelCampos.add(new JLabel("Período:"));
-        painelCampos.add(comboPeriodo);
-        painelCampos.add(new JLabel("Bolsa/Salário:"));
-        painelCampos.add(comboPagamento);
-        painelCampos.add(new JLabel(""));
-        painelCampos.add(btnGerarPlanilha);
+        JLabel[] labels = {
+                new JLabel("Nome:"),
+                new JLabel("Codigo:"),
+                new JLabel("Setor:"),
+                new JLabel("Periodo:"),
+                new JLabel("Bolsa/Salário:"),
+        };
 
-        mainPanel.add(Box.createVerticalStrut(20));
+        Component[] campos = {
+                campoNome,
+                campoCodigo,
+                comboSetor,
+                comboPeriodo,
+                comboPagamento,
+        };
+
+        for (int i = 0; i < labels.length; i++) {
+            gbc.gridx = 0;
+            gbc.gridy = i;
+            painelCampos.add(labels[i], gbc);
+            gbc.gridx = 1;
+            painelCampos.add((Component) campos[i], gbc);
+        }
+
+        gbc.gridx = 0;
+        gbc.gridy = labels.length;
+        gbc.gridwidth = 2;
+        btnGerarPlanilha.setBackground(new Color(30, 31, 34));
+        btnGerarPlanilha.setForeground(Color.WHITE);
+        btnGerarPlanilha.setFont(new Font("Calibri", Font.BOLD, 14));
+        painelCampos.add(btnGerarPlanilha, gbc);
+
         mainPanel.add(painelCampos);
+        mainPanel.add(Box.createVerticalStrut(20));
 
         // Rodapé
         JPanel painelInferior = new JPanel();
         painelInferior.setLayout(new BoxLayout(painelInferior, BoxLayout.Y_AXIS));
         JLabel rodape = new JLabel("@2025 | Versão: 1.0 - Desenvolvido por João Henrique Nazar Tavares");
-        rodape.setFont(new Font("Calibri", Font.BOLD, 10));
+        rodape.setFont(new Font("Calibri", Font.BOLD, 11));
         rodape.setAlignmentX(Component.CENTER_ALIGNMENT);
         painelInferior.add(Box.createVerticalStrut(10));
         painelInferior.add(rodape);
@@ -115,8 +150,14 @@ public class FormularioEstagiario extends JFrame {
             setCellValueSafe(sheet, 7, 3, setor);    // D8
             setCellValueSafe(sheet, 10, 4, bolsa);   // E11
 
-            String mesAtual = LocalDate.now().getMonth().getDisplayName(TextStyle.FULL, new Locale("pt", "BR")).toUpperCase();
-            setCellValueSafe(sheet, 2, 4, "MÊS DE " + mesAtual);  // Ex: célula E3
+            // Lógica para aparecer os dois meses na planilha
+            LocalDate hoje = LocalDate.now();
+            Month mesAtual = hoje.getMonth();
+            Month mesAnterior = hoje.minusMonths(1).getMonth();
+            String nomeMesAtual = mesAtual.getDisplayName(TextStyle.FULL, new Locale("pt", "BR")).toUpperCase();
+            String nomeMesAnterior = mesAnterior.getDisplayName(TextStyle.FULL, new Locale("pt", "BR")).toUpperCase();
+            String textoMeses = nomeMesAnterior + "/" + nomeMesAtual;
+            setCellValueSafe(sheet, 4, 1, textoMeses); // C5
 
             List<LocalDate> dias = gerarDiasEstagio();
 
@@ -142,6 +183,8 @@ public class FormularioEstagiario extends JFrame {
                 String nomeMes = data.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt", "BR")).toUpperCase();
                 String diaDoMes = String.valueOf(data.getDayOfMonth());
                 String diaDaSemana = data.getDayOfWeek().getDisplayName(TextStyle.FULL, new Locale("pt", "BR"));
+                // Modifica a string para ter a primeira letra maiúscula e as demais minúsculas
+                String diaDaSemanaFormatado = diaDaSemana.substring(0, 1).toUpperCase() + diaDaSemana.substring(1).toLowerCase();
 
                 String entrada = "-";
                 String saida = "-";
@@ -159,7 +202,7 @@ public class FormularioEstagiario extends JFrame {
                 cellDia.setCellStyle(estiloDia);
 
                 Cell cellSemana = row.createCell(2);
-                cellSemana.setCellValue(diaDaSemana);
+                cellSemana.setCellValue(diaDaSemanaFormatado);
                 cellSemana.setCellStyle(estiloSemana);
 
                 Cell cellEntrada = row.createCell(3);
